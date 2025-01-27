@@ -1,8 +1,6 @@
 #'
-#' title: sample balance in workers sample 
+#' title: sample balance in workers sample  
 #' description: merges demographic and professional information from workers, along with participation in job intermerdiation, to a single sample. It asses balance in program assignation.
-#' 
-
 
 #
 # Set Up

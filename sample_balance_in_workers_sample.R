@@ -1,6 +1,8 @@
 #'
-#' title: sample balance in workers sample  
-#' description: merges demographic and professional information from workers, along with participation in job intermerdiation, to a single sample. It asses balance in program assignation.
+#' Title: sample balance in workers sample 
+#' Description: merges demographic and professional information from workers, along with participation in job intermerdiation, to a single sample. It asses balance in program assignation.
+#' image_url=assets/*balance.png
+
 
 #
 # Set Up
@@ -18,6 +20,19 @@ setwd(APP_HOME)
 
 setwd(APP_HOME)
 source("routes.R")
+
+#
+# custom libraries
+# --------
+#
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(ggrepel)
+library(scales)
+library(tools)
+
 
 #
 # app modules
@@ -147,7 +162,7 @@ assess_program_balance(
 #
 # (1)
 #
-assestment_of_sample_balance=workers_sample %>%
+assessment_of_sample_balance=workers_sample %>%
   transmute(
     
     participated_any_activity=participated_any_activity,
@@ -156,9 +171,9 @@ assestment_of_sample_balance=workers_sample %>%
     has_high_school = education_level %in% c("high school graduate", "technical"),
     has_university_or_higher = education_level %in% c("university or higher"),
     age = age,
-    under_20 = age < 20,
+    age_under_20 = age < 20,
     age_20_to_30 = age >= 20 & age < 30,
-    over_30 = age >= 30,
+    age_over_30 = age >= 30,
     is_migrant = is_migrant == 1,
     has_experience = experience > 0,
     avg_experience = experience,
@@ -166,9 +181,59 @@ assestment_of_sample_balance=workers_sample %>%
     speaks_foreign_language = foreign_language == 1,
     has_digital_skills = digital_skills == 1
   ) %>%
-  assess_program_balance(treatment_var = "participated_any_activity")
+  assess_program_balance(treatment_var = "participated_any_activity", standardize = TRUE)
 #
-assestment_of_sample_balance %>% View()
+assessment_of_sample_balance %>% View()
+#
+# (2)
+#
+
+# Define custom tick label formats
+format_proportions <- percent_format(accuracy = 0.1)  # Proportions as percentages
+format_continuous <- function(x) sprintf("%.2f", x)   # Continuous values rounded to 2 decimals
+
+# Create plot
+plot <- assessment_of_sample_balance %>%
+  filter(Variable != "Subsample Size") %>%  # Exclude subsample size row
+  mutate(midpoint = pmin(no_treatment, treatment) + (treatment - no_treatment) / 2) %>%  # Compute midpoint
+  pivot_longer(cols = c(no_treatment, treatment), names_to = "Group", values_to = "Value") %>%
+  mutate(
+    Group = recode(Group, "no_treatment" = "Control", "treatment" = "Treatment"),
+    Variable = gsub("_", " ", Variable),  # Replace underscores with spaces
+    Variable = toTitleCase(Variable),  # Capitalize each word
+    midpoint  = ifelse(Group == "Treatment", NA, midpoint),  # Assign NA to Treatment group
+    num_diff = as.numeric(gsub("[^0-9.-]", "", diff)),  # Extract numeric difference
+    sig_label = gsub("[0-9.-]", "", diff)  # Extract significance symbols
+  ) %>%
+  ggplot(aes(x = Value, y = Variable, color = Group)) +
+  geom_point(size = 3, alpha = 0.4) +  # Plot points for treatment/control groups
+  geom_line(aes(group = Variable), linetype = "dashed", color = "gray50", alpha = 0.7) + # Dashed lines
+  geom_text_repel(aes(x = midpoint, label = diff), size = 2, color = "black") +  # Midpoint-based text labels
+  scale_color_manual(values = c("Control" = "blue", "Treatment" = "red")) +  # Custom colors
+  facet_wrap(~ test, scales = "free_x") +  # Facet by test type
+  labs(
+    title = "Assessment of Sample Balance",
+    x = "Measured Value",
+    y = "Variable",
+    color = "Group"
+  ) +
+  scale_y_discrete(labels = function(x) gsub("_", " ", toTitleCase(x))) +  # Format y-axis labels
+  theme_light(base_family = "Arial") +
+  theme(
+    text = element_text(family = "Helvetica"),  # Consistent, clean font
+    plot.title = element_text(size = 14, hjust = 0.5),  # Centered, bold title
+    axis.title = element_text(size = 6),  # Bold axis titles
+    axis.text = element_text(size = 6),  # Readable axis labels
+    legend.position = "bottom",  # Better legend placement
+    legend.text = element_text(size = 8),
+    strip.text = element_text(size = 8),
+    panel.background = element_rect(fill = alpha("white", 0.5))  # Semi-transparent background
+  )
+
+# Save the plot with a transparent background
+setwd(APP_HOME)
+ggsave("sample_balance.png", plot = plot, bg = "transparent", width = 8, height = 6, dpi = 300)
+
 
 
 #
@@ -182,6 +247,5 @@ workers_sample %>%
 #
 assestment_of_sample_balance %>%
   Dataframe.export_output(label="assestment_of_sample_balance", output_home=WORKERS_SAMPLE_HOME)
-
 
 

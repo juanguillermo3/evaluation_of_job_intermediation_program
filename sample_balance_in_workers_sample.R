@@ -1,7 +1,7 @@
 #'
 #' Title: sample balance in workers sample 
-#' Description: merges demographic and professional information from workers, along with participation in job programs, to a single sample. It asses balance in program assignation.
-#' image_url=assets/*balance.png
+#' description: merges demographic and professional information from workers, along with participation in job programs, to a single sample. It asses balance in program assignation.
+#' image_url:assets/sample_balance.png
 #'
 
 #
